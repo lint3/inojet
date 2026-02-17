@@ -14,7 +14,7 @@
 		<div x-data="postInonet()">
 			<input type="text" x-model="myCookie" placeholder="Cookie">
 			<input type="text" x-model="myUrl" placeholder="Endpoint">
-			<button @click="sendRequest()">Get Data</button>
+			<button @click="sendRequest">Get Data</button>
 			<pre x-text="response"></pre>
 		</div>
 		
@@ -28,7 +28,7 @@
 						const r = await fetch(this.myUrl, {
 							method: 'POST',
 							headers: {
-								'Content-Type': 'application/json'
+								'Content-Type': 'application/json',
 								'.inoQuoteAuth': this.myCookie
 							},
 						});
@@ -36,7 +36,7 @@
 						this.response = JSON.stringify(data);
 						console.log(data);
 					}
-				}
+				};
 			}
 		</script>
 		
