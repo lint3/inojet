@@ -4,11 +4,41 @@
 		<meta charset="UTF-8" />
 		<title>InoJet</title>
 		<meta name="viewport" content="width=device-width,initial-scale=1" />
-		<meta name="description" content="" />
-		<link rel="icon" href="favicon.png">
+		<link rel="icon" href="favicon.ico">
 		<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 	</head>
 	<body>
-		<h1 x-data="{ message: 'InoJet Msg' }" x-text="message"></h1>
+	
+		<h1 x-data="{ message: 'InoJet' }" x-text="message"></h1>
+		
+		<div x-data="postInonet()">
+			<input type="text" x-model="myCookie" placeholder="Cookie">
+			<input type="text" x-model="myUrl" placeholder="Endpoint">
+			<button @click="sendRequest">Get Data</button>
+			<pre x-text="response"></pre>
+		</div>
+		
+		<script>
+			function postInonet() {
+				return {
+					myUrl: '',
+					myCookie: '',
+					response: '',
+					async sendRequest() {
+						const r = await fetch(this.myUrl, {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json'
+								'myCookieText': this.myCookie
+							},
+						});
+						const data = await r.json();
+						this.response = JSON.stringify(data);
+						console.log(data);
+					}
+				}
+			}
+		</script>
+		
 	</body>
 </html>
