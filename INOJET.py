@@ -17,8 +17,8 @@ def handle_command(command: str):
     else:
         i += 1
     
-    if callable(node):
-        node(parts[i:])
+    if isinstance(node, commands.Command):
+        node.handler(parts[i:])
     else:
         log.w("Invalid command")
 

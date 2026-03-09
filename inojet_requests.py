@@ -30,6 +30,11 @@ def request_json(url, data=None) -> tuple[bool, dict]:
         return False, {}
 
 
+def normalize_customer_name(name: str) -> str:
+    name = name.replace("-", " ").replace(".", "").replace(",", "")
+    return "".join(word.capitalize() for word in name.split())
+
+
 # Get list of "current" customers from Inonet
 def fetch_current_customers() -> list[ds.Customer]:
     requestSuccess, response = request_json("https://www.theino.net/inoquote/inoCommon.aspx/FillCustomers")
@@ -39,7 +44,7 @@ def fetch_current_customers() -> list[ds.Customer]:
 
         for customer in response:
             result.append(ds.Customer(id=customer["custNo"],
-                                        name=customer["custName"],
+                                        name=normalize_customer_name(customer["custName"]),
                                         guid=customer["custGuid"],
                                         has_active_wo=customer["hasactivewo"]))
         return result

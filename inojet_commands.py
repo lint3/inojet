@@ -1,10 +1,18 @@
 import os
 import time
+from dataclasses import dataclass
+from typing import Callable
 
 import inojet_requests as requests
 import inojet_data as ds
 import inojet_workspaces as ws
 import inojet_logger as log
+
+
+@dataclass
+class Command:
+    handler: Callable[[list[str]], None]
+    completer: Callable[[], list[str]] | None = None
 
 
 CUSTOMER_UPDATE_THRESHOLD_MILLIS = 172800000 # 2 days
@@ -147,25 +155,25 @@ available_commands = {
         "begin": None
     },
     "refresh": {
-        "customers": refresh_customers,
-        "assemblies": refresh_assemblies_revs
+        "customers": Command(refresh_customers),
+        "assemblies": Command(refresh_assemblies_revs, lambda: list(ds._d.customers_by_name))
     },
     "config": {
-        "token": handle_inonet_auth_token,
-        "sessionid": handle_inonet_session_id,
-        "username": handle_inonet_username,
-        "path": config_path,
-        "save": config_save,
-        "load": config_load,
-    }, 
-    "doc": retrieve_doc,
-    "com": com,
-    "workspace": {
-        "assembly": set_workspace_rev,
-        "assy": set_workspace_rev,
-        "path": set_workspace_path
+        "token": Command(handle_inonet_auth_token),
+        "sessionid": Command(handle_inonet_session_id),
+        "username": Command(handle_inonet_username),
+        "path": Command(config_path),
+        "save": Command(config_save),
+        "load": Command(config_load),
     },
-    "assemblies": print_assemblies,
-    "customers": print_customers,
-    "exit": leave
+    "doc": Command(retrieve_doc),
+    "com": Command(com),
+    "workspace": {
+        "assembly": Command(set_workspace_rev),
+        "assy": Command(set_workspace_rev),
+        "path": Command(set_workspace_path)
+    },
+    "assemblies": Command(print_assemblies),
+    "customers": Command(print_customers),
+    "exit": Command(leave)
 }
