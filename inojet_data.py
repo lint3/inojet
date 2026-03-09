@@ -1,0 +1,121 @@
+from dataclasses import dataclass, asdict
+from typing import Any
+import json
+from os import path
+
+import inojet_logger as log
+
+DEFAULT_CONFIG_PATH = ""
+CONFIG_FILENAME = "config.json"
+
+@dataclass
+class Customer:
+    id: int
+    name: str
+    guid: str
+    has_active_wo: bool
+
+@dataclass
+class Assembly:
+    name: str
+    customer_id: int
+
+@dataclass
+class Rev:
+    guid: str
+    rev_name: str
+    assembly_name: str
+
+
+
+class DataStore:
+    def __init__(self):
+        self.customers_by_id: dict[int, Customer] = {}
+
+        self.assemblies_by_name: dict[str, Assembly] = {}
+        self.assemblies_by_customer: dict[int, list[Assembly]] = {}
+
+        self.revs: dict[str, Rev] = {}
+        self.revs_by_assembly: dict[str, list[Rev]] = {}
+
+        self.other_data: dict[str, Any] = {}
+        self.other_data["config_path"] = path.join(DEFAULT_CONFIG_PATH, CONFIG_FILENAME)
+
+    def set_data(self, key: str, val) -> None:
+        self.other_data[key] = val
+    
+    def get_data(self, key) -> str:
+        if key in self.other_data:
+            return self.other_data[key]
+        else:
+            log.log("Could not retrieve data!", "e")
+            return ""
+
+
+    def add_customer(self, customer: Customer) -> None:
+        self.customers_by_id[customer.id] = customer
+
+    def add_assembly(self, assembly: Assembly) -> None:
+        self.assemblies_by_name[assembly.name] = assembly
+        self.assemblies_by_customer.setdefault(assembly.customer_id, []).append(assembly)
+
+    def add_rev(self, rev: Rev) -> None:
+        self.revs[rev.guid] = rev
+        self.revs_by_assembly.setdefault(rev.assembly_name, []).append(rev)
+    
+    
+    def get_assembly_by_name(self, assembly_name: str) -> Assembly | None:
+        return self.assemblies_by_name.get(assembly_name)
+    
+    def get_assemblies_by_customer(self, customer_id: int) -> list[Assembly]:
+        return self.assemblies_by_customer.get(customer_id, [])
+    
+    def get_revs_by_assembly(self, assembly_name: str) -> list[Rev]:
+        return self.revs_by_assembly.get(assembly_name, [])
+    
+
+
+    def export_dict(self) -> dict[str, Any]:
+        return {
+            "customers": [asdict(c) for c in self.customers_by_id.values()],
+            "assemblies": [asdict(a) for a in self.assemblies_by_name.values()],
+            "revs": [asdict(r) for r in self.revs.values()],
+            "other_data": self.other_data
+        }
+    
+    def save_to_disk(self) -> None:
+        dataFile = open(self.get_data("config_path"), "w")
+        json.dump(self.export_dict(), dataFile, indent=2)
+        log.d("Saved to " + self.get_data("config_path"))
+        dataFile.close()
+
+    @classmethod
+    def replace_all_from_disk(cls, load_path: str | None) -> "DataStore":
+        if load_path is None:
+            load_path = path.join(DEFAULT_CONFIG_PATH, CONFIG_FILENAME)
+            log.i("Assumed default path of " + load_path)
+            
+        dataFile = open(load_path, "r")
+        data = json.load(dataFile)
+        return cls.import_dict(data)
+    
+    @classmethod
+    def import_dict(cls, data) -> DataStore:
+        store = cls()
+
+        for c in data.get("customers", []):
+            store.add_customer(Customer(**c))
+        log.i("Loaded " + str(len(data.get("customers", []))) + " customers")
+        for a in data.get("assemblies", []):
+            store.add_assembly(Assembly(**a))
+        for r in data.get("revs", []):
+            store.add_rev(Rev(**r))
+        log.i("Loaded " + str(len(data.get("revs", []))) + " revs of " + str(len(data.get("assemblies", []))) + " assemblies")
+        
+        store.other_data = data.get("other_data", {})
+        log.i("Loaded " + str(len(data.get("other_data", {}))) + " other data items")
+        
+        return store
+    
+
+_d = DataStore()

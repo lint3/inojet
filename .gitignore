@@ -1,0 +1,7 @@
+__pycache__
+.vscode
+archive_unused
+config*.json
+*.backup
+prompting.txt
+software_development_plan.md
