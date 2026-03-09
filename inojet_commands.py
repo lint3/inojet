@@ -35,8 +35,16 @@ def refresh_assemblies_revs(args: list[str]) -> None:
     if not verify_length(args, 1):
         return
     
-    refreshed_assemblies, refreshed_revs = requests.fetch_assemblyrevs(int(args[0]))
-    # TODO: Check if custno is valid and handle customer name
+    if args[0].isdigit():
+        customer_id = int(args[0])
+    else:
+        customer = ds._d.customers_by_name.get(args[0])
+        if customer is None:
+            log.w(f"No customer found with name '{args[0]}'")
+            return
+        customer_id = customer.id
+
+    refreshed_assemblies, refreshed_revs = requests.fetch_assemblyrevs(customer_id)
 
     log.i(f"Found {len(refreshed_assemblies)} assemblies with {len(refreshed_revs)} revs")
 

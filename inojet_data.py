@@ -31,6 +31,7 @@ class Rev:
 class DataStore:
     def __init__(self):
         self.customers_by_id: dict[int, Customer] = {}
+        self.customers_by_name: dict[str, Customer] = {}
 
         self.assemblies_by_name: dict[str, Assembly] = {}
         self.assemblies_by_customer: dict[int, list[Assembly]] = {}
@@ -54,6 +55,7 @@ class DataStore:
 
     def add_customer(self, customer: Customer) -> None:
         self.customers_by_id[customer.id] = customer
+        self.customers_by_name[customer.name] = customer
 
     def add_assembly(self, assembly: Assembly) -> None:
         self.assemblies_by_name[assembly.name] = assembly
