@@ -20,7 +20,7 @@ def w(msg: str):
 
 def e(msg):
     if mode <= 3:
-        print(msg)
+        print("[e] " + msg)
 
 def r(msg):
     if mode <= 4:

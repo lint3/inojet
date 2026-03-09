@@ -44,7 +44,7 @@ class DataStore:
     def set_data(self, key: str, val) -> None:
         self.other_data[key] = val
     
-    def get_data(self, key) -> str:
+    def get_data(self, key) -> Any:
         if key in self.other_data:
             return self.other_data[key]
         else:
@@ -84,19 +84,19 @@ class DataStore:
         }
     
     def save_to_disk(self) -> None:
-        dataFile = open(self.get_data("config_path"), "w")
-        json.dump(self.export_dict(), dataFile, indent=2)
-        log.d("Saved to " + self.get_data("config_path"))
-        dataFile.close()
+        config_path = self.get_data("config_path")
+        with open(config_path, "w") as dataFile:
+            json.dump(self.export_dict(), dataFile, indent=2)
+        log.d(f"Saved to {config_path}")
 
     @classmethod
     def replace_all_from_disk(cls, load_path: str | None) -> "DataStore":
         if load_path is None:
             load_path = path.join(DEFAULT_CONFIG_PATH, CONFIG_FILENAME)
-            log.i("Assumed default path of " + load_path)
+            log.i(f"Assumed default path of {load_path}")
             
-        dataFile = open(load_path, "r")
-        data = json.load(dataFile)
+        with open(load_path, "r") as dataFile:
+            data = json.load(dataFile)
         return cls.import_dict(data)
     
     @classmethod
@@ -105,15 +105,15 @@ class DataStore:
 
         for c in data.get("customers", []):
             store.add_customer(Customer(**c))
-        log.i("Loaded " + str(len(data.get("customers", []))) + " customers")
+        log.i(f"Loaded {len(data.get('customers', []))} customers")
         for a in data.get("assemblies", []):
             store.add_assembly(Assembly(**a))
         for r in data.get("revs", []):
             store.add_rev(Rev(**r))
-        log.i("Loaded " + str(len(data.get("revs", []))) + " revs of " + str(len(data.get("assemblies", []))) + " assemblies")
-        
+        log.i(f"Loaded {len(data.get('revs', []))} revs of {len(data.get('assemblies', []))} assemblies")
+
         store.other_data = data.get("other_data", {})
-        log.i("Loaded " + str(len(data.get("other_data", {}))) + " other data items")
+        log.i(f"Loaded {len(data.get('other_data', {}))} other data items")
         
         return store
     

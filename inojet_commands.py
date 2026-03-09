@@ -25,7 +25,7 @@ def refresh_customers(args: list[str]) -> None:
         return
     
     refreshed_customers: list[ds.Customer] = requests.fetch_current_customers()
-    log.i("Found " + str(len(refreshed_customers)) + " customers")
+    log.i(f"Found {len(refreshed_customers)} customers")
     ds._d.set_data("customers_last_updated", int(time.time()))
 
     for new_customer in refreshed_customers:
@@ -38,7 +38,7 @@ def refresh_assemblies_revs(args: list[str]) -> None:
     refreshed_assemblies, refreshed_revs = requests.fetch_assemblyrevs(int(args[0]))
     # TODO: Check if custno is valid and handle customer name
 
-    log.i("Found " + str(len(refreshed_assemblies)) + " assemblies with " + str(len(refreshed_revs)) + " revs")
+    log.i(f"Found {len(refreshed_assemblies)} assemblies with {len(refreshed_revs)} revs")
 
     for new_assembly in refreshed_assemblies:
         ds._d.add_assembly(new_assembly)
@@ -87,15 +87,15 @@ def config_load(args: list[str]) -> None:
     if len(args) == 0:
         ds._d = ds._d.replace_all_from_disk(None)
     elif len(args) == 1:
-        ds._d.replace_all_from_disk(args[0])
+        ds._d = ds._d.replace_all_from_disk(args[0])
     else:
         log.w("Too many args!")
 
 def retrieve_doc(args: list[str]) -> None:
     if len(args) == 2:
-        log.e("DUMMY get doc " + str(args[1]) + " for assy " + str(args[0]))
+        log.e(f"DUMMY get doc {args[1]} for assy {args[0]}")
     elif len(args) == 3:
-        log.e("DUMMY get doc " + str(args[2]) + " for " + str(args[0]) + " " + str(args[1]))
+        log.e(f"DUMMY get doc {args[2]} for {args[0]} {args[1]}")
     else:
         log.w("Bad input for retrieve_doc!")
 
@@ -127,8 +127,8 @@ def print_assemblies(args: list[str]) -> None:
 
 def print_customers(args: list[str]) -> None:
     if verify_length(args, 0):
-        for customer in ds._d.customers_by_id.items():
-            log.r(customer[1].name)
+        for customer in ds._d.customers_by_id.values():
+            log.r(customer.name)
 
 def leave(args: list[str]) -> None:
     log.i("Goodbye.")
@@ -151,7 +151,7 @@ available_commands = {
         "load": config_load,
     }, 
     "doc": retrieve_doc,
-    "com": {},
+    "com": com,
     "workspace": {
         "assembly": set_workspace_rev,
         "assy": set_workspace_rev,

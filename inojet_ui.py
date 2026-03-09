@@ -7,14 +7,6 @@ from prompt_toolkit.completion import WordCompleter, NestedCompleter, FuzzyWordC
 from prompt_toolkit.shortcuts import CompleteStyle
 
 import inojet_commands as commands
-import inojet_data as ds
-
-# class command_completer(Completer):
-#     def __init__(self, state):
-#         self.state = state
-    
-#     def get_completions(self, document: Document, complete_event: CompleteEvent) -> Iterable[Completion]:
-        
 
 def build_command_dict(tree):
     result = {}
@@ -24,11 +16,6 @@ def build_command_dict(tree):
         else:
             result[key] = None
     return result
-
-
-def rebuild_completions(assemblies: list[ds.Assembly], customers: list[ds.Customer]):
-    result = build_command_dict
-    
 
 
 
