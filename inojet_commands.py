@@ -5,7 +5,6 @@ from typing import Callable
 
 import inojet_requests as requests
 import inojet_data as ds
-import inojet_workspaces as ws
 import inojet_logger as log
 
 
@@ -34,10 +33,10 @@ def refresh_customers(args: list[str]) -> None:
     
     refreshed_customers: list[ds.Customer] = requests.fetch_current_customers()
     log.i(f"Found {len(refreshed_customers)} customers")
-    ds._d.set_data("customers_last_updated", int(time.time()))
+    ds.d.set_data("customers_last_updated", int(time.time()))
 
     for new_customer in refreshed_customers:
-        ds._d.add_customer(new_customer)
+        ds.d.add_customer(new_customer)
 
 def refresh_assemblies_revs(args: list[str]) -> None:
     if not verify_length(args, 1):
@@ -46,7 +45,7 @@ def refresh_assemblies_revs(args: list[str]) -> None:
     if args[0].isdigit():
         customer_id = int(args[0])
     else:
-        customer = ds._d.customers_by_name.get(args[0])
+        customer = ds.d.customers_by_name.get(args[0])
         if customer is None:
             log.w(f"No customer found with name '{args[0]}'")
             return
@@ -57,15 +56,15 @@ def refresh_assemblies_revs(args: list[str]) -> None:
     log.i(f"Found {len(refreshed_assemblies)} assemblies with {len(refreshed_revs)} revs")
 
     for new_assembly in refreshed_assemblies:
-        ds._d.add_assembly(new_assembly)
+        ds.d.add_assembly(new_assembly)
     for new_rev in refreshed_revs:
-        ds._d.add_rev(new_rev)
+        ds.d.add_rev(new_rev)
 
 def handle_data_config(args: list[str], key: str) -> None:
     if len(args) == 1:
-        ds._d.set_data(key, args[0])
+        ds.d.set_data(key, args[0])
     elif len(args) == 0:
-        log.r(ds._d.get_data(key))
+        log.r(ds.d.get_data(key))
     else:
         log.w("Too many args!")
 
@@ -83,27 +82,27 @@ def config_path(args: list[str]) -> None:
         if not os.path.exists(args[0]):
             log.w("File path invalid")
         else:
-            ds._d.set_data("config_path", args[0])
+            ds.d.set_data("config_path", args[0])
             log.i("Set file path")
     elif len(args) == 0:
-        log.r(ds._d.get_data("config_path"))
+        log.r(ds.d.get_data("config_path"))
     else:
         log.w("Too many args!")
         
 def config_save(args: list[str]) -> None:
     if len(args) == 0:
-        ds._d.save_to_disk()
+        ds.d.save_to_disk()
     elif len(args) == 1:
         config_path(args)
-        ds._d.save_to_disk()
+        ds.d.save_to_disk()
     else:
         log.w("Too many args!")
 
 def config_load(args: list[str]) -> None:
     if len(args) == 0:
-        ds._d = ds._d.replace_all_from_disk(None)
+        ds.d = ds.d.replace_all_from_disk(None)
     elif len(args) == 1:
-        ds._d = ds._d.replace_all_from_disk(args[0])
+        ds.d = ds.d.replace_all_from_disk(args[0])
     else:
         log.w("Too many args!")
 
@@ -118,31 +117,45 @@ def retrieve_doc(args: list[str]) -> None:
 def com(args: list[str]) -> None:
     log.e("COM: Not implemented!")
 
+def set_workspace_assy(args: list[str]) -> None:
+    if len(args) == 1:
+        if args[0] in ds.d.assemblies_by_name:
+            ds.d.workspace.assembly_name = args[0]
+        else:
+            log.w("Assembly not found!")
+    elif len(args) == 0:
+        if ds.d.workspace.assembly_name == "":
+            log.r("No assembly name set!")
+        else:
+            log.r(ds.d.workspace.assembly_name)
+    else:
+        log.w("Too many args!")
+
 def set_workspace_rev(args: list[str]) -> None:
     pass
 
 def set_workspace_path(args: list[str]) -> None:
     if len(args) == 1:
-        ws.w.working_path = args[0]
+        ds.d.workspace.working_path = args[0]
         log.d("Set working path")
     elif len(args) == 0:
-        log.r(ws.w.working_path)
+        log.r(ds.d.workspace.working_path)
     else:
         log.w("Too many args!")
 
 def print_assemblies(args: list[str]) -> None:
     if len(args) == 1:
-        for assy in ds._d.assemblies_by_customer[int(args[0])]:
+        for assy in ds.d.assemblies_by_customer[int(args[0])]:
             log.r(assy)
     elif len(args) == 0:
-        for assy in ds._d.assemblies_by_name:
+        for assy in ds.d.assemblies_by_name:
             log.r(assy)
     else:
         log.w("Too many args!")
 
 def print_customers(args: list[str]) -> None:
     if verify_length(args, 0):
-        for customer in ds._d.customers_by_id.values():
+        for customer in ds.d.customers_by_id.values():
             log.r(customer.name)
 
 def leave(args: list[str]) -> None:
@@ -155,7 +168,7 @@ available_commands = {
     },
     "refresh": {
         "customers": Command(refresh_customers),
-        "assemblies": Command(refresh_assemblies_revs, lambda: list(ds._d.customers_by_name))
+        "assemblies": Command(refresh_assemblies_revs, lambda: list(ds.d.customers_by_name))
     },
     "config": {
         "token": Command(handle_inonet_auth_token),
@@ -168,8 +181,9 @@ available_commands = {
     "doc": Command(retrieve_doc),
     "com": Command(com),
     "workspace": {
-        "assembly": Command(set_workspace_rev, lambda: list(ds._d.revs_by_guid)),
-        "assy": Command(set_workspace_rev),
+        "assembly": Command(set_workspace_assy, lambda: list(ds.d.revs_by_assembly)),
+        "assy": Command(set_workspace_assy),
+        "rev": Command(set_workspace_rev),
         "path": Command(set_workspace_path)
     },
     "assemblies": Command(print_assemblies),

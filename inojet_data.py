@@ -43,9 +43,11 @@ class DataStore:
         self.other_data: dict[str, Any] = {}
         self.other_data["config_path"] = path.join(DEFAULT_CONFIG_PATH, CONFIG_FILENAME)
 
+        self.workspace: ws.Workspace = ws.Workspace()
+
     def set_data(self, key: str, val) -> None:
         self.other_data[key] = val
-    
+
     def get_data(self, key) -> Any:
         if key in self.other_data:
             return self.other_data[key]
@@ -65,17 +67,17 @@ class DataStore:
     def add_rev(self, rev: Rev) -> None:
         self.revs_by_guid[rev.guid] = rev
         self.revs_by_assembly.setdefault(rev.assembly_name, []).append(rev)
-    
-    
+
+
     def get_assembly_by_name(self, assembly_name: str) -> Assembly | None:
         return self.assemblies_by_name.get(assembly_name)
-    
+
     def get_assemblies_by_customer(self, customer_id: int) -> list[Assembly]:
         return self.assemblies_by_customer.get(customer_id, [])
-    
+
     def get_revs_by_assembly(self, assembly_name: str) -> list[Rev]:
         return self.revs_by_assembly.get(assembly_name, [])
-    
+
 
 
     def export_dict(self) -> dict[str, Any]:
@@ -85,27 +87,26 @@ class DataStore:
             "revs": [asdict(r) for r in self.revs_by_guid.values()],
             "other_data": self.other_data
         }
-    
+
     def save_to_disk(self) -> None:
         config_path = self.get_data("config_path")
         with open(config_path, "w") as dataFile:
-            workspaces: list[dict[str, str]] = [ws.w.export_dict()]
-            # TODO: Support multiple workspaces
-            json.dump(self.export_dict() | {"workspaces": workspaces}, dataFile, indent=2)
+            json.dump(self.export_dict() | {"workspaces": [self.workspace.export_dict()]}, dataFile, indent=2)
         log.d(f"Saved to {config_path}")
 
     @classmethod
-    def replace_all_from_disk(cls, load_path: str | None) -> DataStore:
+    def replace_all_from_disk(cls, load_path: str | None) -> "DataStore":
         if load_path is None:
             load_path = path.join(DEFAULT_CONFIG_PATH, CONFIG_FILENAME)
             log.i(f"Assumed default path of {load_path}")
-            
+
         with open(load_path, "r") as dataFile:
             data = json.load(dataFile)
-        return cls.import_dict(data)
-    
+
+        return cls.from_dict(data)
+
     @classmethod
-    def import_dict(cls, data) -> DataStore:
+    def from_dict(cls, data) -> "DataStore":
         store = cls()
 
         for c in data.get("customers", []):
@@ -117,14 +118,14 @@ class DataStore:
             store.add_rev(Rev(**r))
         log.i(f"Loaded {len(data.get('revs', []))} revs of {len(data.get('assemblies', []))} assemblies")
 
-        for w in data.get("workspaces", []):
-            ws.w = w
-            # TODO: Support multiple workspaces
-
         store.other_data = data.get("other_data", {})
         log.i(f"Loaded {len(data.get('other_data', {}))} other data items")
-        
-        return store
-    
 
-_d = DataStore()
+        workspaces = data.get("workspaces", [])
+        if workspaces:
+            store.workspace = ws.Workspace.from_dict(workspaces[0])
+
+        return store
+
+
+d = DataStore()

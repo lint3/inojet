@@ -9,8 +9,8 @@ import inojet_logger as log
 # Get JSON from Inonet (returns parsed pythonic data)
 def request_json(url, data=None) -> tuple[bool, dict]:
     myCookies = {
-        "ASP.NET_SessionId": ds._d.get_data("inonet_session_id"),
-        ".inoQuoteAuth": ds._d.get_data("inonet_auth_token"),
+        "ASP.NET_SessionId": ds.d.get_data("inonet_session_id"),
+        ".inoQuoteAuth": ds.d.get_data("inonet_auth_token"),
     }
     myHeaders = {
         "Content-Type": "application/json; charset=utf-8"
@@ -24,7 +24,7 @@ def request_json(url, data=None) -> tuple[bool, dict]:
             return False, {}
         else:
             return True, r.json()["d"]
-    
+
     else:
         log.e("Response failed with status " + str(r.status_code))
         return False, {}
@@ -38,7 +38,7 @@ def normalize_customer_name(name: str) -> str:
 # Get list of "current" customers from Inonet
 def fetch_current_customers() -> list[ds.Customer]:
     requestSuccess, response = request_json("https://www.theino.net/inoquote/inoCommon.aspx/FillCustomers")
-    
+
     if requestSuccess:
         result = []
 
@@ -52,14 +52,17 @@ def fetch_current_customers() -> list[ds.Customer]:
         return []
 
 
-# Get dict of Assemblies for a given customer from Inonet
+# Get list of AssemblyRevs for a given customer from Inonet.
+# Inonet returns a flat list of AssemblyRevs (every rev of every assembly).
+# Each item is parsed into a separate Assembly and Rev; assemblies are deduplicated.
 def fetch_assemblyrevs(customer_id: int) -> tuple[list[ds.Assembly], list[ds.Rev]]:
     payload = {"custno": str(customer_id)}
     requestSuccess, response = request_json("https://www.theino.net/changeReq.aspx/getAssems", data=json.dumps(payload))
-    
+
     if requestSuccess:
         resultAssys = []
         resultRevs = []
+        seenAssys = set()
 
         for assemblyrev in response:
             assyName = assemblyrev["assembly"].split(" ")[0].strip()
@@ -69,11 +72,13 @@ def fetch_assemblyrevs(customer_id: int) -> tuple[list[ds.Assembly], list[ds.Rev
                                      rev_name=revName,
                                      assembly_name=assyName))
 
-            resultAssys.append(ds.Assembly(name=assyName,
-                                        customer_id=customer_id))
+            if assyName not in seenAssys:
+                seenAssys.add(assyName)
+                resultAssys.append(ds.Assembly(name=assyName,
+                                               customer_id=customer_id))
         return resultAssys, resultRevs
     else:
         return [], []
-    
+
 def fetch_documents(assembly_full_name: str, work_order: int):
     log.e("Not implemented!")
