@@ -26,6 +26,8 @@ def handle_command(command: str):
 
 log.log("Initializing...", 'i')
 
+handle_command("config load")
+
 while True: # command handler may call exit()
     command = ui.session.prompt("INOJET > ", completer=ui.mainCompleter, complete_style=CompleteStyle.MULTI_COLUMN)
     handle_command(command)

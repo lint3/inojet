@@ -4,6 +4,7 @@ import json
 from os import path
 
 import inojet_logger as log
+import inojet_workspaces as ws
 
 DEFAULT_CONFIG_PATH = ""
 CONFIG_FILENAME = "config.json"
@@ -36,7 +37,7 @@ class DataStore:
         self.assemblies_by_name: dict[str, Assembly] = {}
         self.assemblies_by_customer: dict[int, list[Assembly]] = {}
 
-        self.revs: dict[str, Rev] = {}
+        self.revs_by_guid: dict[str, Rev] = {}
         self.revs_by_assembly: dict[str, list[Rev]] = {}
 
         self.other_data: dict[str, Any] = {}
@@ -62,7 +63,7 @@ class DataStore:
         self.assemblies_by_customer.setdefault(assembly.customer_id, []).append(assembly)
 
     def add_rev(self, rev: Rev) -> None:
-        self.revs[rev.guid] = rev
+        self.revs_by_guid[rev.guid] = rev
         self.revs_by_assembly.setdefault(rev.assembly_name, []).append(rev)
     
     
@@ -81,18 +82,20 @@ class DataStore:
         return {
             "customers": [asdict(c) for c in self.customers_by_id.values()],
             "assemblies": [asdict(a) for a in self.assemblies_by_name.values()],
-            "revs": [asdict(r) for r in self.revs.values()],
+            "revs": [asdict(r) for r in self.revs_by_guid.values()],
             "other_data": self.other_data
         }
     
     def save_to_disk(self) -> None:
         config_path = self.get_data("config_path")
         with open(config_path, "w") as dataFile:
-            json.dump(self.export_dict(), dataFile, indent=2)
+            workspaces: list[dict[str, str]] = [ws.w.export_dict()]
+            # TODO: Support multiple workspaces
+            json.dump(self.export_dict() | {"workspaces": workspaces}, dataFile, indent=2)
         log.d(f"Saved to {config_path}")
 
     @classmethod
-    def replace_all_from_disk(cls, load_path: str | None) -> "DataStore":
+    def replace_all_from_disk(cls, load_path: str | None) -> DataStore:
         if load_path is None:
             load_path = path.join(DEFAULT_CONFIG_PATH, CONFIG_FILENAME)
             log.i(f"Assumed default path of {load_path}")
@@ -113,6 +116,10 @@ class DataStore:
         for r in data.get("revs", []):
             store.add_rev(Rev(**r))
         log.i(f"Loaded {len(data.get('revs', []))} revs of {len(data.get('assemblies', []))} assemblies")
+
+        for w in data.get("workspaces", []):
+            ws.w = w
+            # TODO: Support multiple workspaces
 
         store.other_data = data.get("other_data", {})
         log.i(f"Loaded {len(data.get('other_data', {}))} other data items")

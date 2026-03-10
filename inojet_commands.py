@@ -121,7 +121,6 @@ def com(args: list[str]) -> None:
 def set_workspace_rev(args: list[str]) -> None:
     pass
 
-
 def set_workspace_path(args: list[str]) -> None:
     if len(args) == 1:
         ws.w.working_path = args[0]
@@ -169,7 +168,7 @@ available_commands = {
     "doc": Command(retrieve_doc),
     "com": Command(com),
     "workspace": {
-        "assembly": Command(set_workspace_rev),
+        "assembly": Command(set_workspace_rev, lambda: list(ds._d.revs_by_guid)),
         "assy": Command(set_workspace_rev),
         "path": Command(set_workspace_path)
     },
