@@ -5,6 +5,60 @@ import json
 import inojet_data as ds
 import inojet_logger as log
 
+DOCS = {
+    "AOIT": "AoiTop",
+    "AOIB": "AoiBottom",
+    "AOIYCDTHA": "AoiTha",
+    "AOIP": "AoiPolarity",
+    "AOIR": "AoiMirtec",
+    "ARY": "ArrayPdf",
+    "ARY DWG": "ArrayDwg",
+    "ASSYDWG": "AssemblyDrawing",
+    "AXI": "AxiEngineering",
+    "AXIP": "AxiProgram",
+    "BOM": "Bom",
+    "BRDIMG": "BoardImage",
+    "CAD": "Cad",
+    "CBOM": "CBom",
+    "CECO": "Variance",
+    "CUSTAPP": "CustomerApproval",
+    "GER": "Gerbers",
+    "GERBPAN": "GerberBoardHouse",
+    "JIS": "JukiProgramsProduction",
+    "JISE": "JukiProgramsEngineering",
+    "MODCBOM": "ModifiedCustomerBom",
+    "PCFAB": "PcbFabDrawing",
+    "PREWI": "PrelimWorkInstructionsTts",
+    "PREWIPDF": "PrelimWorkInstructionsPdf",
+    "PRNT": "PrinterNPM",
+    "R-I": "Review1",
+    "R-II": "Review2",
+    "RWK": "ReworkInstructionsTts",
+    "RWKPDF": "ReworkInstructionsPdf",
+    "SCH": "Schematic",
+    "SOW": "StatementOfWork",
+    "SPI_MIR": "SpiMir",
+    "SPI_PRG": "SpiProgram",
+    "STAMP": "StampPackage",
+    "STGRB": "StencilGerber",
+    "TCPROF": "ThermalChamberProfile",
+    "TCRECIPE": "ThermalChamberRecipe",
+    "VITRP": "ReflowProfileVitronics",
+    "VITRR": "ReflowRecipeVitronics"
+}
+
+RELEVANT_DOCUMENTATION = [
+    "ARY", "ASSYDWG", "BOM", "CAD", "CBOM", "PCFAB"
+]
+
+DERIVED_FILES = [
+    "AOIR", "AXIP", "JIS"
+]
+
+PROD_TECH_OUTPUTS = [
+    "AOIT", "AOIB", "AOIP", "AOIYCDTHA", "AXI", "JISE", "PREWI", "PREWIPDF", "RWK", "RWKPDF", 
+]
+
 
 # Get JSON from Inonet (returns parsed pythonic data)
 def request_json(url, data=None) -> tuple[bool, dict]:
@@ -80,5 +134,14 @@ def fetch_assemblyrevs(customer_id: int) -> tuple[list[ds.Assembly], list[ds.Rev
     else:
         return [], []
 
-def fetch_documents(assembly_full_name: str, work_order: int):
-    log.e("Not implemented!")
+
+# Get the list of available documents for a given assembly rev.
+def fetch_document_list(cust: str, pflid: str) -> None:
+    payload = {"cust": cust, "pflid": pflid}
+    success, response = request_json("https://www.theino.net/FillReleasedDocsTable", data=json.dumps(payload))
+    if success:
+        log.r(str(response))
+
+# TODO: Retrieve the document file itself.
+def fetch_document(_cust: str, _pflid: str, _doc_type: str) -> None:
+    pass

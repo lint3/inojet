@@ -78,7 +78,11 @@ class DataStore:
     def get_revs_by_assembly(self, assembly_name: str) -> list[Rev]:
         return self.revs_by_assembly.get(assembly_name, [])
 
-
+    def guid_lookup_by_assemblyrev(self, assembly_name: str, rev_name: str) -> str:
+        if rev_name in self.revs_by_assembly.get(assembly_name, []):
+            return self.revs_by_assembly[assembly_name][rev_name].guid
+        else:
+            raise NameError("Failed to look up GUID by assy and rev name!")
 
     def export_dict(self) -> dict[str, Any]:
         return {

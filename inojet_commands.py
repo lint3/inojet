@@ -12,6 +12,7 @@ import inojet_logger as log
 class Command:
     handler: Callable[[list[str]], None]
     completer: Callable[[], list[str]] | None = None
+    completers: list[Callable[[list[str]], list[str]]] | None = None
 
 
 CUSTOMER_UPDATE_THRESHOLD_MILLIS = 172800000 # 2 days
@@ -106,13 +107,75 @@ def config_load(args: list[str]) -> None:
     else:
         log.w("Too many args!")
 
+def _resolve_doc_type(input_type: str) -> str | None:
+    """Case-insensitive match against DOCS short codes then full names. Returns full name or None."""
+    for key, val in requests.DOCS.items():
+        if input_type.lower() == key.lower():
+            return val
+    for val in requests.DOCS.values():
+        if input_type.lower() == val.lower():
+            return val
+    return None
+
 def retrieve_doc(args: list[str]) -> None:
-    if len(args) == 2:
-        log.e(f"DUMMY get doc {args[1]} for assy {args[0]}")
-    elif len(args) == 3:
-        log.e(f"DUMMY get doc {args[2]} for {args[0]} {args[1]}")
+    if len(args) == 0:
+        log.w("Must specify a document type")
+        return
+    if len(args) > 3:
+        log.w("Too many args!")
+        return
+
+    # Resolve doc type
+    doc_type = _resolve_doc_type(args[0])
+    if doc_type is None:
+        log.w(f"Unknown doc type '{args[0]}'")
+        return
+
+    # Resolve assembly
+    if len(args) >= 2:
+        assy_name = args[1]
     else:
-        log.w("Bad input for retrieve_doc!")
+        assy_name = ds.d.workspace.assembly_name
+        if not assy_name:
+            log.w("No assembly specified and no workspace assembly set")
+            return
+
+    revs = ds.d.revs_by_assembly.get(assy_name)
+    if not revs:
+        log.w(f"No revs found for assembly '{assy_name}'")
+        return
+
+    # Resolve rev
+    if len(args) >= 3:
+        rev_name = args[2]
+        rev = next((r for r in revs if r.rev_name == rev_name), None)
+        if rev is None:
+            log.w(f"Rev '{rev_name}' not found for assembly '{assy_name}'")
+            return
+    elif len(args) == 2:
+        rev = sorted(revs, key=lambda r: r.rev_name)[-1]
+        log.i(f"Auto-selected rev {rev.rev_name}")
+    else:
+        ws_rev = ds.d.workspace.rev_name
+        if not ws_rev:
+            log.w("No rev specified and no workspace rev set")
+            return
+        rev = next((r for r in revs if r.rev_name == ws_rev), None)
+        if rev is None:
+            log.w(f"Workspace rev '{ws_rev}' not found for assembly '{assy_name}'")
+            return
+
+    # Resolve customer
+    assy = ds.d.assemblies_by_name.get(assy_name)
+    if assy is None:
+        log.w(f"Assembly '{assy_name}' not found in data store")
+        return
+    customer = ds.d.customers_by_id.get(assy.customer_id)
+    if customer is None:
+        log.w(f"Customer not found for assembly '{assy_name}'")
+        return
+
+    requests.fetch_document_list(cust=customer.name, pflid=rev.guid)
 
 def com(args: list[str]) -> None:
     log.e("COM: Not implemented!")
@@ -178,7 +241,11 @@ available_commands = {
         "save": Command(config_save),
         "load": Command(config_load),
     },
-    "doc": Command(retrieve_doc),
+    "doc": Command(retrieve_doc, completers=[
+        lambda _: [k.lower() for k in requests.DOCS if ' ' not in k] + list(requests.DOCS.values()),
+        lambda _: list(ds.d.revs_by_assembly),
+        lambda prior: [r.rev_name for r in ds.d.revs_by_assembly.get(prior[1], [])] if len(prior) >= 2 else [],
+    ]),
     "com": Command(com),
     "workspace": {
         "assembly": Command(set_workspace_assy, lambda: list(ds.d.revs_by_assembly)),
