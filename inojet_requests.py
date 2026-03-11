@@ -1,4 +1,5 @@
 
+import os
 import requests
 import json
 
@@ -61,7 +62,7 @@ PROD_TECH_OUTPUTS = [
 
 
 # Get JSON from Inonet (returns parsed pythonic data)
-def request_json(url, data=None) -> tuple[bool, dict]:
+def request_json(url, data=None) -> tuple[bool, dict | list]:
     myCookies = {
         "ASP.NET_SessionId": ds.d.get_data("inonet_session_id"),
         ".inoQuoteAuth": ds.d.get_data("inonet_auth_token"),
@@ -136,12 +137,30 @@ def fetch_assemblyrevs(customer_id: int) -> tuple[list[ds.Assembly], list[ds.Rev
 
 
 # Get the list of available documents for a given assembly rev.
-def fetch_document_list(cust: str, pflid: str) -> None:
-    payload = {"cust": cust, "pflid": pflid}
-    success, response = request_json("https://www.theino.net/FillReleasedDocsTable", data=json.dumps(payload))
-    if success:
-        log.r(str(response))
+def fetch_document_list(pflid: str) -> list[dict]:
+    payload = {"pflId": pflid, "wo": ""}
+    success, response = request_json("https://www.theino.net/assemblyDash.aspx/FillReleasedDocsTable", data=json.dumps(payload))
+    return response if (success and isinstance(response, list)) else []
 
-# TODO: Retrieve the document file itself.
-def fetch_document(_cust: str, _pflid: str, _doc_type: str) -> None:
-    pass
+# Retrieve and save a document file from Inonet.
+def fetch_document(cust: str, file_name: str, short_code: str, save_path: str) -> None:
+    file_path = f"\\\\10.4.8.11\\InoNet\\ReleasedDocs\\{short_code}\\{cust}\\{file_name}"
+    params = {"fileName": file_name, "filePath": file_path}
+    cookies = {
+        "ASP.NET_SessionId": ds.d.get_data("inonet_session_id"),
+        ".inoQuoteAuth": ds.d.get_data("inonet_auth_token"),
+    }
+    r = requests.get(
+        "https://www.theino.net/inoquote/fileDownloadHandler.ashx",
+        params=params,
+        cookies=cookies,
+        stream=True,
+    )
+    if r.status_code != 200:
+        log.e(f"Download failed with status {r.status_code}")
+        return
+    dest = os.path.join(save_path, file_name)
+    with open(dest, 'wb') as f:
+        for chunk in r.iter_content(chunk_size=8192):
+            f.write(chunk)
+    log.r(f"Saved: {dest}")

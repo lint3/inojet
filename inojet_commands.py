@@ -108,13 +108,13 @@ def config_load(args: list[str]) -> None:
         log.w("Too many args!")
 
 def _resolve_doc_type(input_type: str) -> str | None:
-    """Case-insensitive match against DOCS short codes then full names. Returns full name or None."""
+    """Case-insensitive match against DOCS short codes then full names. Returns canonical short code or None."""
     for key, val in requests.DOCS.items():
         if input_type.lower() == key.lower():
-            return val
-    for val in requests.DOCS.values():
+            return key
+    for key, val in requests.DOCS.items():
         if input_type.lower() == val.lower():
-            return val
+            return key
     return None
 
 def retrieve_doc(args: list[str]) -> None:
@@ -175,7 +175,19 @@ def retrieve_doc(args: list[str]) -> None:
         log.w(f"Customer not found for assembly '{assy_name}'")
         return
 
-    requests.fetch_document_list(cust=customer.name, pflid=rev.guid)
+    doc_list = requests.fetch_document_list(pflid=rev.guid)
+    record = next((r for r in doc_list if r["fileId"] == doc_type), None)
+    if record is None:
+        log.w(f"Doc type '{doc_type}' not found for {assy_name} {rev.rev_name}")
+        return
+
+    save_path = ds.d.workspace.working_path or "."
+    requests.fetch_document(
+        cust=customer.name,
+        file_name=record["oFileName"],
+        short_code=doc_type,
+        save_path=save_path,
+    )
 
 def com(args: list[str]) -> None:
     log.e("COM: Not implemented!")
